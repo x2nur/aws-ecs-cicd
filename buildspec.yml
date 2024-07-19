@@ -7,6 +7,7 @@ version: 0.2
 
 phases:
   pre_build:
+    on-failure: abort
     commands:
       - echo Logging into ECR...
       - REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com     
@@ -16,12 +17,14 @@ phases:
       - IMG_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-6) # first 6 symbols
       - "printf 'Image tag: %s\n' $IMG_TAG"
   build:
+    on-failure: abort
     commands:
       - echo Building the docker image...
       - docker build -t $IMG_REPO_NAME .
-      - docker tag $IMG_REPO ${REGISTRY}/${IMG_REPO_NAME}:$IMG_TAG
-      - docker tag $IMG_REPO ${REGISTRY}/${IMG_REPO_NAME}:latest
+      - docker tag $IMG_REPO_NAME ${REGISTRY}/${IMG_REPO_NAME}:$IMG_TAG
+      - docker tag $IMG_REPO_NAME ${REGISTRY}/${IMG_REPO_NAME}:latest
   post_build:
+    on-failure: abort
     commands:
       - echo Pushing the Docker image...
       - docker push ${REGISTRY}/${IMG_REPO_NAME}
