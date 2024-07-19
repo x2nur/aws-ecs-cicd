@@ -13,7 +13,7 @@ phases:
       - "printf 'Registry: %s\n' $REGISTRY"
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY
       - echo CODEBUILD_SRC_VERSION:${CODEBUILD_RESOLVED_SOURCE_VERSION}
-      - IMG_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION::6} # first 6 symbols
+      - IMG_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-6) # first 6 symbols
       - "printf 'Image tag: %s\n' $IMG_TAG"
   build:
     commands:
