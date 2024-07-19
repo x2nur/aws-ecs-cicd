@@ -24,7 +24,7 @@ phases:
     commands:
       - echo Pushing the Docker image...
       - docker push ${REGISTRY}/${IMG_REPO_NAME}
-      - echo '[{"name":"${CONTAINER_NAME}", "imageUri": "${REGISTRY}/${IMG_REPO_NAME}:${IMG_TAG}"}]' > imagedefinitions.json
+      - echo '[{"name":"${CONTAINER_NAME}", "imageUri":"${REGISTRY}/${IMG_REPO_NAME}:${IMG_TAG}"}]' > imagedefinitions.json
 
 artifacts:
   files: imagedefinitions.json
