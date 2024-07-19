@@ -27,7 +27,8 @@ phases:
     on-failure: abort
     commands:
       - echo Pushing the Docker image...
-      - docker push ${REGISTRY}/${IMG_REPO_NAME}
+      - docker push ${REGISTRY}/${IMG_REPO_NAME}:latest
+      - docker push ${REGISTRY}/${IMG_REPO_NAME}:$IMG_TAG
       - echo '[{"name":"${CONTAINER_NAME}", "imageUri":"${REGISTRY}/${IMG_REPO_NAME}:${IMG_TAG}"}]' > imagedefinitions.json
 
 artifacts:
