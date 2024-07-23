@@ -11,25 +11,23 @@ phases:
     commands:
       - echo Logging into ECR...
       - REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com     
-      - "printf 'Registry: %s\n' $REGISTRY"
+      - IMG_REPO_PATH=$REGISTRY/$IMG_REPO_NAME
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY
-      - echo CODEBUILD_SRC_VERSION:${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - IMG_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-6) # first 6 symbols
-      - "printf 'Image tag: %s\n' $IMG_TAG"
   build:
     on-failure: abort
     commands:
       - echo Building the docker image...
       - docker build -t $IMG_REPO_NAME .
-      - docker tag $IMG_REPO_NAME ${REGISTRY}/${IMG_REPO_NAME}:$IMG_TAG
-      - docker tag $IMG_REPO_NAME ${REGISTRY}/${IMG_REPO_NAME}:latest
+      - docker tag $IMG_REPO_NAME $IMG_REPO_PATH:$IMG_TAG
+      - docker tag $IMG_REPO_NAME $IMG_REPO_PATH:latest
   post_build:
     on-failure: abort
     commands:
       - echo Pushing the Docker image...
-      - docker push ${REGISTRY}/${IMG_REPO_NAME}:latest
-      - docker push ${REGISTRY}/${IMG_REPO_NAME}:$IMG_TAG
-      - echo '[{"name":"${CONTAINER_NAME}", "imageUri":"${REGISTRY}/${IMG_REPO_NAME}:${IMG_TAG}"}]' > imagedefinitions.json
+      - docker push $IMG_REPO_PATH:latest
+      - docker push $IMG_REPO_PATH:$IMG_TAG
+      - echo '[{"name":"${CONTAINER_NAME}", "imageUri":"${IMG_REPO_PATH}:${IMG_TAG}"}]' > imagedefinitions.json
 
 artifacts:
   files: imagedefinitions.json
