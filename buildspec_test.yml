@@ -1,0 +1,9 @@
+version: 0.2
+
+phases:
+  build:
+    on-failure: abort
+    commands:
+      - echo Testing app...
+      # The index.html page must contain a title with the word 'page'
+      - grep -iE '<p>[[:alnum:][:blank:]]*page[[:alnum:][:blank:]]*</p>' index.html
