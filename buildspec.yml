@@ -27,7 +27,7 @@ phases:
       - echo Pushing the Docker image...
       - docker push $IMG_REPO_PATH:latest
       - docker push $IMG_REPO_PATH:$IMG_TAG
-      - echo '[{"name":"${CONTAINER_NAME}", "imageUri":"${IMG_REPO_PATH}:${IMG_TAG}"}]' > imagedefinitions.json
+      - printf '[{"name":"%s", "imageUri":"%s"}]' "$CONTAINER_NAME" "$IMG_REPO_PATH:$IMG_TAG" > imagedefinitions.json
 
 artifacts:
   files: imagedefinitions.json
