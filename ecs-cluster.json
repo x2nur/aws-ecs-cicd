@@ -1,0 +1,42 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "ECSClusterName": {
+            "Type": "String",
+            "Description": "ECS Cluster Name",
+            "Default": "DevCluster"
+        },
+    },
+    "Resources": {
+        "ECSCluster": {
+            "Type": "AWS::ECS::Cluster",
+            "Properties": {
+                "ClusterName": {
+                    "Ref": "ECSClusterName"
+                },
+                "CapacityProviders": [
+                    "FARGATE",
+                    "FARGATE_SPOT"
+                ],
+                "Configuration": {
+                    "ExecuteCommandConfiguration": {
+                        "Logging": "DEFAULT"
+                    }
+                },
+                "ServiceConnectDefaults": {
+                    "Namespace": {
+                        "Ref": "ECSClusterName"
+                    }
+                },
+            }
+        }
+    },
+    "Outputs": {
+        "ECSCluster": {
+            "Description": "The created cluster.",
+            "Value": {
+                "Ref": "ECSCluster"
+            }
+        }
+    }
+}
