@@ -1,0 +1,92 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "ECSClusterStackName": {
+            "Description": "ECS cluster stack name",
+            "Type": "String",
+            "Default": "DevCluster"
+        },
+        "ServiceName": {
+            "Type": "String",
+            "Default": "http-service"
+        },
+        "SecurityGroupIDs": {
+            "Type": "List<AWS::EC2::SecurityGroup::Id>",
+            "Description": "SecurityGroup IDs"
+        },
+        "SubnetIDs": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "Subnet IDs"
+        },
+    },
+    "Resources": {
+        "ECSService": {
+            "Type": "AWS::ECS::Service",
+            "Properties": {
+                "Cluster": {
+                    "Fn::ImportValue": {"Fn::Sub": "${ECSClusterStackName}-ClusterName"}
+                },
+                "CapacityProviderStrategy": [
+                    {
+                        "CapacityProvider": "FARGATE_SPOT",
+                        "Base": 0,
+                        "Weight": 1
+                    }
+                ],
+                "TaskDefinition": "arn:aws:ecs:eu-north-1:872659738713:task-definition/http-server:1",
+                "ServiceName": { "Ref": "ServiceName" },
+                "SchedulingStrategy": "REPLICA",
+                "DesiredCount": 1,
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "AssignPublicIp": "ENABLED",
+                        "SecurityGroups": {
+                            "Ref": "SecurityGroupIDs"
+                        },
+                        "Subnets": {
+                            "Ref": "SubnetIDs"
+                        }
+                    }
+                },
+                "DeploymentConfiguration": {
+                    "MaximumPercent": 200,
+                    "MinimumHealthyPercent": 100,
+                    "DeploymentCircuitBreaker": {
+                        "Enable": true,
+                        "Rollback": true
+                    }
+                },
+                "ServiceConnectConfiguration": {
+                    "Enabled": true,
+                    "Namespace": {
+                        "Fn::ImportValue": { "Fn::Sub": "${ECSClusterStackName}-ClusterName" }
+                    }
+                    "Services": [
+                        {
+                            "PortName": "http-server-8000",
+                            "ClientAliases": [
+                                {
+                                    "Port": "8000"
+                                }
+                            ]
+                        }
+                    ]
+                },
+            }
+        }
+    },
+    "Outputs": {
+        "ClusterName": {
+            "Description": "The cluster used to create the service.",
+            "Value": {
+                "Ref": "ECSClusterName"
+            }
+        },
+        "ECSService": {
+            "Description": "The created service.",
+            "Value": {
+                "Ref": "ECSService"
+            }
+        }
+    }
+}
