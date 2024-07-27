@@ -1,0 +1,36 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "RepoName": {
+            "Type": "String",
+            "Description": "Repository name (lowercase)",
+            "Default": "demo-http-server"
+        }
+    }
+    "Resources": {
+        "HttpServerRepo": {
+            "Type": "AWS::ECR::Repository",
+            "UpdateReplacePolicy": "Delete",
+            "DeletionPolicy": "Delete",
+            "Properties": {
+                "RepositoryName": {
+                    "Ref": "RepoName"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "RepoUri": {
+            "Description": "Repository URI",
+            "Value": {
+                "Fn::GetAtt": [
+                    "HttpServerRepo",
+                    "RepositoryUri"
+                ]
+            },
+            "Export": {
+                "Name": { "Fn::Sub": "${AWS::StackName}-RepoUri" }
+            }
+        }
+    }
+}
