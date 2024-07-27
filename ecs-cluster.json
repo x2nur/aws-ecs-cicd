@@ -36,6 +36,9 @@
             "Description": "The created cluster.",
             "Value": {
                 "Ref": "ECSCluster"
+            },
+            "Export": {
+                "Name": { "Fn::Sub": "${AWS::StackName}-ClusterName" }
             }
         }
     }
