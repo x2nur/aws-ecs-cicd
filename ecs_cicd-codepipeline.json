@@ -1,0 +1,270 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "GitHubRepoId": {
+            "Type": "String",
+            "Description": "The GitHub repo id in the format user/repo"
+        },
+        "ECRRepoArn": {
+            "Type": "String",
+            "Description": "The ECR repo ARN"
+        },
+        "ClusterName": {
+            "Type": "",
+            "Description": ""
+        },
+        "ServiceName": {
+            "Type": "",
+            "Description": ""
+        }
+    },
+    "Resources": {
+        "ECSCiCdCodePipeline": {
+            "Type": "AWS::CodePipeline::Pipeline",
+            "Properties": {
+                "Name": "ECS-CICD-Pipeline",
+                "PipelineType": "V2",
+                "ExecutionMode": "SUPERSEDED",
+                "ArtifactStore": {
+                    "Type": "S3",
+                    "Location": { "Fn::Sub": "${AWS::StackName}-Artifact-S3-Bucket" }
+                },
+                "RoleArn": { "Ref": "ECSCiCdCodePipelineRole" },
+                "Triggers": [
+                    {
+                        "ProviderType": "CodeStarSourceConnection",
+                        "GitConfiguration": {
+                            "SourceActionName": "GitHub-Source",
+                            "Push": [
+                                {
+                                    "Branches": {
+                                        "Includes": [ "main" ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Stages": [
+                    {
+                        "Name": "Source",
+                        "Actions": [
+                            {
+                                "Name": "GitHub-Source",
+                                "OutputArtifacts": [
+                                    { "Name": "SourceArtifact" }
+                                ],
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Provider": "CodeStarSourceConnection",
+                                    "Version": "1",
+                                    "Owner": "AWS"
+                                },
+                                "Configuration": {
+                                    "ConnectionArn": { "Ref": "GitHubConnection" },
+                                    "FullRepositoryId": { "Ref": "GitHubRepoId" },
+                                    "BranchName": "main"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "Build",
+                        "Actions": [
+                            {
+                                "Name": "CodeBuild-Test",
+                                "InputArtifacts": [
+                                    { "Name": "SourceArtifact" }
+                                ],
+                                "RunOrder": 1,
+                                "ActionTypeId": {
+                                    "Category": "Build",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1" 
+                                },
+                                "Configuration": {
+                                    "ProjectName": { "Ref": "CodeBuildTestProject" }
+                                }
+                            },
+                            {
+                                "Name": "CodeBuild-Build",
+                                "InputArtifacts": [
+                                    { "Name": "SourceArtifact" }
+                                ],
+                                "OutputArtifacts": [
+                                    { "Name": "BuildArtifact" }
+                                ],
+                                "RunOrder": 2,
+                                "ActionTypeId": {
+                                    "Category": "Build",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1" 
+                                },
+                                "Configuration": {
+                                    "ProjectName": { "Ref": "CodeBuildDockerProject" }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "Deploy",
+                        "Actions": [
+                            {
+                                "Name": "ECS Deploy",
+                                "InputArtifacts": [
+                                    { "Name": "BuildArtifact" }
+                                ],
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Provider": "ECS",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ClusterName": { "Ref": "ClusterName" },
+                                    "ServiceName": { "Ref": "ServiceName" }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "GitHubConnection": {
+            "Type": "AWS::CodeStarConnections::Connection",
+            "Properties": {
+                "ConnectionName": "ECS-CICD-App-GitHubConnection",
+                "ProviderType": "GitHub"
+            }
+        },
+        "ArtifactBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName": { "Fn::Sub": "${AWS::StackName}-Artifact-S3-Bucket" },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
+            }
+        },
+        "ECSCiCdCodePipelineRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "ECS-CICD-App-CodePipeline-Role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codepipeline.amazonaws.com"
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AdministratorAccess"
+                ]
+            }
+        },
+        "CodeBuildRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "ECS-CICD-CodeBuild-Role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "ECS-CICD-CodeBuild-Policy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": "*",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": [ { "Fn::GetAtt": [ "ArtifactBucket", "Arn" ] } ],
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:GetObject",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketAcl",
+                                        "s3:GetBucketLocation"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": { "Ref": "ECRRepoArn" },
+                                    "Action": [
+                                        "ecr:*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CodeBuildTestProject": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Environment": {
+                    "Type": "LINUX_CONTAINER",
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/standard:7.0"
+                },
+                "Name": "ecs-cicd-test-codebuild-project",
+                "ServiceRole": { "Ref": "CodeBuildRole" },
+                "Source": {
+                    "Type": "CODEPIPELINE",
+                    "BuildSpec": "./buildspec_test.yml"
+                }
+            }
+        },
+        "CodeBuildDockerProject": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Environment": {
+                    "Type": "LINUX_CONTAINER",
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "PrivilegedMode": true,
+                    "Image": "aws/codebuild/standard:7.0"
+                },
+                "Name": "ecs-cicd-docker-codebuild-projectt",
+                "ServiceRole": { "Ref": "CodeBuildRole" },
+                "Source": {
+                    "Type": "CODEPIPELINE",
+                    "BuildSpec": "./buildspec.yml"
+                }
+            }
+        }
+    }
+}
