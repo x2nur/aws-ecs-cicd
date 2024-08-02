@@ -1,4 +1,4 @@
-# CiCD Pipeline with GitHub integration for a container based web app on AWS 
+# CICD Pipeline with GitHub integration for a container based web app on AWS 
 
 ## Description
 This sample project is designed to show how to build a CICD pipeline for deploying a containerized application to an ECS cluster. 
@@ -28,14 +28,19 @@ The CodePipeline workflow steps:
 
 ## Prerequisites
 - Installed **aws cli** tool and preconfigured aws user profile in case of using cli. Or just use AWS Console.
-- GitHub account
+- GitHub account w/ a repository that hosts the project source code
 
 ## Installation
-### Navigate to CloudFormation console
-
-
-Navigate to CodePipeline > Settings > Connections and find the connection created by the codepipline CF template. Open the connection and finish setting up GitHub connection.
+- Navigate to **CloudFormation** console
+- Create a new stack for ECR repository that will host a simple http server by uploading _ecs_cicd-ecr_httpserver.json_ template file 
+- On the next page fill in all the required parameters
+- Repeat all the above steps w/ the CF template files in the following order:
+    - _ecs_cicd-cluster.json_ - ECS cluster based on Fargate compute engine
+    - _ecs_cicd-http_service.json_ - ECS service for the sample http app
+    - _ecs_cicd-api_gateway.json_ - API Gateway of type HTTP
+    - _ecs_cicd-codepipeline.json_ - CI/CD pipeline
+- Navigate to CodePipeline > Settings > Connections and find the connection created by the codepipline CF template. Open the connection and finish setting up the GitHub connection.
 
 ## How to use
-The CodePipeline project is configured to be started each time the source code changes.
+The CodePipeline project is configured to be started every time the source code changes.
 
