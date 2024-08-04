@@ -1,36 +1,33 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Parameters": {
-        "RepoName": {
-            "Type": "String",
-            "Description": "Repository name (lowercase)",
-            "Default": "demo-http-server"
-        }
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "RepositoryName": {
+      "Type": "String",
+      "Description": "Repository name (lowercase)",
+      "Default": "ecs-cicd-httpserver"
     }
-    "Resources": {
-        "HttpServerRepo": {
-            "Type": "AWS::ECR::Repository",
-            "UpdateReplacePolicy": "Delete",
-            "DeletionPolicy": "Delete",
-            "Properties": {
-                "RepositoryName": {
-                    "Ref": "RepoName"
-                }
-            }
+  },
+  "Resources": {
+    "HttpServerRepo": {
+      "Type": "AWS::ECR::Repository",
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RepositoryName": {
+          "Ref": "RepositoryName"
         }
-    },
-    "Outputs": {
-        "RepoUri": {
-            "Description": "Repository URI",
-            "Value": {
-                "Fn::GetAtt": [
-                    "HttpServerRepo",
-                    "RepositoryUri"
-                ]
-            },
-            "Export": {
-                "Name": { "Fn::Sub": "${AWS::StackName}-RepoUri" }
-            }
-        }
+      }
     }
+  },
+  "Outputs": {
+    "Uri": {
+      "Description": "Repository URI",
+      "Value": {
+        "Fn::GetAtt": ["HttpServerRepo", "RepositoryUri"]
+      },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-Uri" }
+      }
+    }
+  }
 }
