@@ -1,18 +1,18 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Parameters": {
-        "ECSClusterName": {
+        "ClusterName": {
             "Type": "String",
             "Description": "ECS Cluster Name",
             "Default": "DevCluster"
-        },
+        }
     },
     "Resources": {
-        "ECSCluster": {
+        "Cluster": {
             "Type": "AWS::ECS::Cluster",
             "Properties": {
                 "ClusterName": {
-                    "Ref": "ECSClusterName"
+                    "Ref": "ClusterName"
                 },
                 "CapacityProviders": [
                     "FARGATE",
@@ -25,20 +25,33 @@
                 },
                 "ServiceConnectDefaults": {
                     "Namespace": {
-                        "Ref": "ECSClusterName"
+                        "Fn::GetAtt": ["CloudMapHttpNamespace", "Arn"]
                     }
-                },
+                }
+            }
+        },
+        "CloudMapHttpNamespace": {
+            "Type": "AWS::ServiceDiscovery::HttpNamespace",
+            "Properties": {
+                "Name": { "Ref": "ClusterName" }
             }
         }
     },
     "Outputs": {
-        "ECSCluster": {
-            "Description": "The created cluster.",
+        "ClusterName": {
+            "Description": "The created cluster",
             "Value": {
-                "Ref": "ECSCluster"
+                "Ref": "Cluster"
             },
             "Export": {
                 "Name": { "Fn::Sub": "${AWS::StackName}-ClusterName" }
+            }
+        },
+        "NamespaceId": {
+            "Description": "",
+            "Value": { "Ref": "CloudMapHttpNamespace" },
+            "Export": {
+                "Name": { "Fn::Sub": "${AWS::StackName}-NamespaceId" }
             }
         }
     }
