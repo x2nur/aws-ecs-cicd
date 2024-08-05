@@ -1,155 +1,187 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-
-    "Parameters": {
-        "ECSClusterStackName": {
-            "Description": "ECS cluster stack name",
-            "Type": "String",
-            "Default": "DevCluster"
-        },
-        "DockerImgUri": {
-            "Type": "String",
-            "Description": "Docker image uri of the http server listening on port 8000"
-        }
-        "SecurityGroupIDs": {
-            "Type": "List<AWS::EC2::SecurityGroup::Id>",
-            "Description": "Service Security group IDs"
-        },
-        "SubnetIDs": {
-            "Type": "List<AWS::EC2::Subnet::Id>",
-            "Description": "Service Subnet IDs"
-        },
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "ECSClusterStackName": {
+      "Description": "ECS cluster stack name",
+      "Type": "String"
     },
-
-    "Resources": {
-
-        "ECSService": {
-            "Type": "AWS::ECS::Service",
-            "Properties": {
-                "Cluster": {
-                    "Fn::ImportValue": {"Fn::Sub": "${ECSClusterStackName}-ClusterName"}
-                },
-                "CapacityProviderStrategy": [
-                    {
-                        "CapacityProvider": "FARGATE_SPOT",
-                        "Base": 0,
-                        "Weight": 1
-                    }
-                ],
-                "TaskDefinition": "http-server",
-                "ServiceName": "http-service",
-                "SchedulingStrategy": "REPLICA",
-                "DesiredCount": 1,
-                "NetworkConfiguration": {
-                    "AwsvpcConfiguration": {
-                        "AssignPublicIp": "ENABLED",
-                        "SecurityGroups": {
-                            "Ref": "SecurityGroupIDs"
-                        },
-                        "Subnets": {
-                            "Ref": "SubnetIDs"
-                        }
-                    }
-                },
-                "DeploymentConfiguration": {
-                    "MaximumPercent": 200,
-                    "MinimumHealthyPercent": 100,
-                    "DeploymentCircuitBreaker": {
-                        "Enable": true,
-                        "Rollback": true
-                    }
-                },
-                "ServiceConnectConfiguration": {
-                    "Enabled": true,
-                    "Namespace": {
-                        "Fn::ImportValue": { "Fn::Sub": "${ECSClusterStackName}-ClusterName" }
-                    }
-                    "Services": [
-                        {
-                            "PortName": "http-server-8000",
-                            "ClientAliases": [
-                                {
-                                    "Port": "8000"
-                                }
-                            ]
-                        }
-                    ]
-                },
-            }
-        },
-        
-        "StdEcsTaskExecRole": {
-            "Type": "AWS::IAM::Role",
-            "UpdateReplacePolicy": "Delete",
-            "DeletionPolicy": "Delete",
-            "Properties": {
-                "ManagedPolicyArns": [
-                    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-                ],
-                "RoleName": "ecsTaskExecutionRole",
-                "AssumeRolePolicyDocument": {
-                    "Version": "2008-10-17",
-                    "Statement": [
-                        {
-                            "Action": "sts:AssumeRole",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "ecs-tasks.amazonaws.com"
-                            },
-                        }
-                    ]
-                }
-            }
-        },
-
-        "HttpServerTaskDef": {
-            "Type": "AWS::ECS::TaskDefinition",
-            "UpdateReplacePolicy": "Delete",
-            "DeletionPolicy": "Delete",
-            "Properties": {
-                "ExecutionRoleArn": {
-                    "Fn::GetAtt": [
-                        "StdEcsTaskExecRole",
-                        "Arn"
-                    ]
-                },
-                "Family": "http-server",
-                "RuntimePlatform": {
-                    "OperatingSystemFamily": "LINUX",
-                    "CpuArchitecture": "X86_64"
-                },
-                "RequiresCompatibilities": [
-                    "FARGATE"
-                ],
-                "Cpu": "256",
-                "Memory": "512",
-                "ContainerDefinitions": [
-                    {
-                        "Image": {
-                            "Ref": "DockerImgUri"
-                        },
-                        "Name": "http-server-8000",
-                        "PortMappings": [
-                            {
-                                "ContainerPort": 8000,
-                                "AppProtocol": "http",
-                                "Protocol": "tcp",
-                                "HostPort": 8000,
-                                "Name": "http-server-8000"
-                            }
-                        ],
-                    }
-                ],
-                "NetworkMode": "awsvpc",
-            }
-        }  
+    "DockerImgUri": {
+      "Type": "String",
+      "Description": "Repository uri of the http server on port 8000"
     },
-    "Outputs": {
-        "ECSService": {
-            "Description": "The created service.",
-            "Value": {
-                "Ref": "ECSService"
-            }
-        }
+    "SecurityGroupIDs": {
+      "Type": "List<AWS::EC2::SecurityGroup::Id>",
+      "Description": "Service Security group IDs"
+    },
+    "SubnetIDs": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "Service Subnet IDs"
     }
+  },
+  "Resources": {
+    "Service": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "${ECSClusterStackName}-ClusterName"
+          }
+        },
+        "CapacityProviderStrategy": [
+          {
+            "CapacityProvider": "FARGATE_SPOT",
+            "Base": 0,
+            "Weight": 1
+          }
+        ],
+        "TaskDefinition": "http-server",
+        "ServiceName": "http-service",
+        "SchedulingStrategy": "REPLICA",
+        "DesiredCount": 1,
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": {
+              "Ref": "SecurityGroupIDs"
+            },
+            "Subnets": {
+              "Ref": "SubnetIDs"
+            }
+          }
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 100,
+          "DeploymentCircuitBreaker": {
+            "Enable": true,
+            "Rollback": true
+          }
+        },
+        "ServiceRegistries": [
+          {
+            "RegistryArn": { "Fn::GetAtt": ["CloudMapHttpService", "Arn"] },
+            "Port": 8000
+          }
+        ],
+        "ServiceConnectConfiguration": {
+          "Enabled": false,
+          "Namespace": {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${ECSClusterStackName}-NamespaceId"
+            }
+          },
+          "Services": [
+            {
+              "PortName": "http-server-8000",
+              "ClientAliases": [
+                {
+                  "Port": "8000"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "CloudMapHttpService": {
+        "Type": "AWS::ServiceDiscovery::Service",
+        "Properties": {
+            "Description": "Discovery service for ECS http server",
+            "NamespaceId": {
+                "Fn::ImportValue": {
+                    "Fn::Sub": "${ECSClusterStackName}-NamespaceId"
+                }     
+            },
+            "DnsConfig": {
+              "DnsRecords": [
+                {
+                  "TTL": 60,
+                  "Type": "SRV"
+                }
+              ],
+              "RoutingPolicy": "MULTIVALUE"
+            },
+            "Name": "http-service"
+        }
+    },
+    "StdEcsTaskExecRole": {
+      "Type": "AWS::IAM::Role",
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        ],
+        "RoleName": "ecs-cicd-task-exec-role",
+        "AssumeRolePolicyDocument": {
+          "Version": "2008-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "HttpServerTaskDef": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "StdEcsTaskExecRole",
+            "Arn"
+          ]
+        },
+        "Family": "http-server",
+        "RuntimePlatform": {
+          "OperatingSystemFamily": "LINUX",
+          "CpuArchitecture": "X86_64"
+        },
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "Cpu": "256",
+        "Memory": "512",
+        "ContainerDefinitions": [
+          {
+            "Image": {
+              "Ref": "DockerImgUri"
+            },
+            "Name": "http-server-8000",
+            "PortMappings": [
+              {
+                "ContainerPort": 8000,
+                "AppProtocol": "http",
+                "Protocol": "tcp",
+                "HostPort": 8000,
+                "Name": "http-server-8000"
+              }
+            ]
+          }
+        ],
+        "NetworkMode": "awsvpc"
+      }
+    }
+  },
+  "Outputs": {
+    "Service": {
+      "Description": "The created service",
+      "Value": {
+        "Ref": "Service"
+      }
+    },
+    "CloudMapServiceArn": {
+      "Description": "Cloud map service ARN",
+      "Value": { "Fn::GetAtt": ["CloudMapHttpService", "Arn"] },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-CloudMapSrvArn" }
+      }
+    }
+  }
 }
