@@ -5,6 +5,9 @@
             "Type": "String",
             "Description": "ECS Cluster Name",
             "Default": "DevCluster"
+        },
+        "VPC": {
+            "Type": "AWS::EC2::VPC::Id"
         }
     },
     "Resources": {
@@ -31,9 +34,10 @@
             }
         },
         "CloudMapHttpNamespace": {
-            "Type": "AWS::ServiceDiscovery::HttpNamespace",
+            "Type": "AWS::ServiceDiscovery::PrivateDnsNamespace",
             "Properties": {
-                "Name": { "Ref": "ClusterName" }
+                "Name": { "Ref": "ClusterName" },
+                "Vpc": { "Ref": "VPC" }
             }
         }
     },
