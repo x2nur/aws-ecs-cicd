@@ -1,9 +1,9 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Parameters": {
-        "ServiceDiscoveryName": {
+        "ECSHttpServiceStackName": {
             "Type": "String",
-            "Description": "Service discovery name"
+            "Description": "ECS http service stack name"
         },
         "SecurityGroupIDs": {
             "Type": "List<AWS::EC2::SecurityGroup::Id>",
@@ -15,40 +15,25 @@
         }
     },
     "Resources": {
-        "CloudMapHttpNamespace": {
-            "Type": "AWS::ServiceDiscovery::HttpNamespace",
-            "Properties": {
-                "Name": { "Ref": "ServiceDiscoveryName" }
-            }
-        },
-        "CloudMapHttpService": {
-            "Type": "AWS::ServiceDiscovery::Service",
-            "Properties": {
-                "Description": "Discovery service for ECS CICD demo app",
-                "NamespaceId": { "Ref": "CloudMapHttpNamespace" },
-                "Type": "HTTP",
-                "Name": "http-service"
-            }
-        },
-        "ECSApiGateway": {
+        "ApiGateway": {
             "Type": "AWS::ApiGatewayV2::Api",
             "Properties": {
                 "ProtocolType": "HTTP",
-                "Name": "ECS-CICD-ApiGateway"
+                "Name": "ecs-cicd-apigateway"
             }
         },
-        "ECSApiDevStage": {
-            "Type": "AWS::ApiGatewayV2::Api",
+        "ApiDevStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
             "Properties": {
-                "StageName": "ECS-CICD-ApiDevStage",
-                "ApiId": { "Ref": "ECSApiGateway" },
+                "StageName": "$default",
+                "ApiId": { "Ref": "ApiGateway" },
                 "AutoDeploy": true
             }
         },
         "VpcLink": {
             "Type": "AWS::ApiGatewayV2::VpcLink",
             "Properties": {
-                "Name": "ECS-CICD-VpcLink",
+                "Name": "ecs-cicd-vpclink",
                 "SecurityGroupIds": {
                     "Ref": "SecurityGroupIDs"
                 },
@@ -57,34 +42,35 @@
                 }
             }
         },
-        "ECSHttpServiceRoute": {
+        "HttpServiceRoute": {
             "Type": "AWS::ApiGatewayV2::Route",
             "Properties": {
-                "ApiId": { "Ref": "ECSApiGateway" },
+                "ApiId": { "Ref": "ApiGateway" },
                 "RouteKey": "ANY /{proxy+}",
                 "Target": {
                     "Fn::Join": [ 
                         "/", 
-                        [ "integrations", { "Ref": "ECSHttpServiceIntegration" } ]
+                        [ "integrations", { "Ref": "HttpServiceIntegration" } ]
                     ]
                 }
             }
         },
-        "ECSHttpServiceIntegration": {
+        "HttpServiceIntegration": {
             "Type": "AWS::ApiGatewayV2::Integration",
             "Properties": {
-                "Description": "Cloud Map integration w/ ECS Service",
-                "ApiId": { "Ref": "ECSApiGateway" },
+                "Description": "Cloud Map integration w/ ECS http service",
+                "ApiId": { "Ref": "ApiGateway" },
                 "ConnectionType": "VPC_LINK",
                 "ConnectionId": { "Ref": "VpcLink" },
                 "IntegrationType": "HTTP_PROXY",
                 "IntegrationMethod": "ANY",
                 "IntegrationUri": {
-                    "Fn::GetAtt": [ "CloudMapHttpService", "Arn" ]
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${ECSHttpServiceStackName}-CloudMapSrvArn"
+                    }
                 },
                 "PayloadFormatVersion": "1.0"
             }
         }
-    },
-    "Outputs": {}
+    }
 }
