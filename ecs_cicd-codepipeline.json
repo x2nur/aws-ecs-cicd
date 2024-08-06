@@ -3,38 +3,39 @@
     "Parameters": {
         "GitHubRepoId": {
             "Type": "String",
-            "Description": "The GitHub repo id in the format user/repo"
+            "Description": "The GitHub repo id in the format user/repo w/ the source code of a docker app"
         },
         "ECRRepoArn": {
             "Type": "String",
             "Description": "The ECR repo ARN"
         },
         "ClusterName": {
-            "Type": "",
-            "Description": ""
+            "Type": "String",
+            "Description": "ECS cluster name"
         },
         "ServiceName": {
-            "Type": "",
-            "Description": ""
+            "Type": "String",
+            "Description": "ECS service name"
         }
     },
     "Resources": {
-        "ECSCiCdCodePipeline": {
+        "CodePipeline": {
             "Type": "AWS::CodePipeline::Pipeline",
+            "DependsOn": "ArtifactBucket",
             "Properties": {
-                "Name": "ECS-CICD-Pipeline",
+                "Name": "ecs-cicd-pipeline",
                 "PipelineType": "V2",
                 "ExecutionMode": "SUPERSEDED",
                 "ArtifactStore": {
                     "Type": "S3",
-                    "Location": { "Fn::Sub": "${AWS::StackName}-Artifact-S3-Bucket" }
+                    "Location": { "Fn::Sub": "${AWS::StackName}-artifact-s3-bucket" }
                 },
-                "RoleArn": { "Ref": "ECSCiCdCodePipelineRole" },
+                "RoleArn": { "Fn::GetAtt": ["CodePipelineRole", "Arn"] },
                 "Triggers": [
                     {
                         "ProviderType": "CodeStarSourceConnection",
                         "GitConfiguration": {
-                            "SourceActionName": "GitHub-Source",
+                            "SourceActionName": "github-source",
                             "Push": [
                                 {
                                     "Branches": {
@@ -50,7 +51,7 @@
                         "Name": "Source",
                         "Actions": [
                             {
-                                "Name": "GitHub-Source",
+                                "Name": "github-source",
                                 "OutputArtifacts": [
                                     { "Name": "SourceArtifact" }
                                 ],
@@ -72,7 +73,7 @@
                         "Name": "Build",
                         "Actions": [
                             {
-                                "Name": "CodeBuild-Test",
+                                "Name": "codebuild-test",
                                 "InputArtifacts": [
                                     { "Name": "SourceArtifact" }
                                 ],
@@ -88,7 +89,7 @@
                                 }
                             },
                             {
-                                "Name": "CodeBuild-Build",
+                                "Name": "codebuild-build",
                                 "InputArtifacts": [
                                     { "Name": "SourceArtifact" }
                                 ],
@@ -112,7 +113,7 @@
                         "Name": "Deploy",
                         "Actions": [
                             {
-                                "Name": "ECS Deploy",
+                                "Name": "ecs-deploy",
                                 "InputArtifacts": [
                                     { "Name": "BuildArtifact" }
                                 ],
@@ -135,14 +136,14 @@
         "GitHubConnection": {
             "Type": "AWS::CodeStarConnections::Connection",
             "Properties": {
-                "ConnectionName": "ECS-CICD-App-GitHubConnection",
+                "ConnectionName": "ecs-cicd-github-con",
                 "ProviderType": "GitHub"
             }
         },
         "ArtifactBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "BucketName": { "Fn::Sub": "${AWS::StackName}-Artifact-S3-Bucket" },
+                "BucketName": { "Fn::Sub": "${AWS::StackName}-artifact-s3-bucket" },
                 "PublicAccessBlockConfiguration": {
                     "BlockPublicAcls": true,
                     "BlockPublicPolicy": true,
@@ -151,10 +152,10 @@
                 }
             }
         },
-        "ECSCiCdCodePipelineRole": {
+        "CodePipelineRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": "ECS-CICD-App-CodePipeline-Role",
+                "RoleName": "ecs-cicd-codpipeline-role",
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -175,7 +176,7 @@
         "CodeBuildRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "RoleName": "ECS-CICD-CodeBuild-Role",
+                "RoleName": "ecs-cicd-codebuild-role",
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -190,7 +191,7 @@
                 },
                 "Policies": [
                     {
-                        "PolicyName": "ECS-CICD-CodeBuild-Policy",
+                        "PolicyName": "ecs-cicd-codebuild-policy",
                         "PolicyDocument": {
                             "Version": "2012-10-17",
                             "Statement": [
@@ -238,7 +239,7 @@
                     "ComputeType": "BUILD_GENERAL1_SMALL",
                     "Image": "aws/codebuild/standard:7.0"
                 },
-                "Name": "ecs-cicd-test-codebuild-project",
+                "Name": "ecs-cicd-codebuild-tests",
                 "ServiceRole": { "Ref": "CodeBuildRole" },
                 "Source": {
                     "Type": "CODEPIPELINE",
@@ -258,7 +259,7 @@
                     "PrivilegedMode": true,
                     "Image": "aws/codebuild/standard:7.0"
                 },
-                "Name": "ecs-cicd-docker-codebuild-projectt",
+                "Name": "ecs-cicd-codebuild-docker",
                 "ServiceRole": { "Ref": "CodeBuildRole" },
                 "Source": {
                     "Type": "CODEPIPELINE",
