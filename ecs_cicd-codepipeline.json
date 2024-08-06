@@ -9,6 +9,14 @@
             "Type": "String",
             "Description": "The ECR repo ARN"
         },
+        "ECRRepoName": {
+            "Type": "String",
+            "Description": "The ECR repo name (not a path)"
+        },
+        "ContainerName": {
+            "Type": "String",
+            "Description": "The container name from the task definition"
+        },
         "ClusterName": {
             "Type": "String",
             "Description": "ECS cluster name"
@@ -206,7 +214,10 @@
                                 },
                                 {
                                     "Effect": "Allow",
-                                    "Resource": [ { "Fn::GetAtt": [ "ArtifactBucket", "Arn" ] } ],
+                                    "Resource": [ 
+                                        { "Fn::GetAtt": [ "ArtifactBucket", "Arn" ] },
+                                        { "Fn::Join": [ "/", [ { "Fn::GetAtt": [ "ArtifactBucket", "Arn" ] }, "*" ] ] }
+                                    ],
                                     "Action": [
                                         "s3:PutObject",
                                         "s3:GetObject",
@@ -220,6 +231,13 @@
                                     "Resource": { "Ref": "ECRRepoArn" },
                                     "Action": [
                                         "ecr:*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": "*",
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken"
                                     ]
                                 }
                             ]
@@ -257,7 +275,24 @@
                     "Type": "LINUX_CONTAINER",
                     "ComputeType": "BUILD_GENERAL1_SMALL",
                     "PrivilegedMode": true,
-                    "Image": "aws/codebuild/standard:7.0"
+                    "Image": "aws/codebuild/standard:7.0",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "AWS_ACCOUNT_ID",
+                            "Type": "PLAINTEXT",
+                            "Value": { "Fn::Sub": "${AWS::AccountId}" }
+                        },
+                        {
+                            "Name": "IMG_REPO_NAME",
+                            "Type": "PLAINTEXT",
+                            "Value": { "Ref": "ECRRepoName" }
+                        },
+                        {
+                            "Name": "CONTAINER_NAME",
+                            "Type": "PLAINTEXT",
+                            "Value": { "Ref": "ContainerName" }
+                        }
+                    ]
                 },
                 "Name": "ecs-cicd-codebuild-docker",
                 "ServiceRole": { "Ref": "CodeBuildRole" },
